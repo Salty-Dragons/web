@@ -1,0 +1,16 @@
+# Environment & credentials
+.env
+.env.*
+!.env.example
+
+# Build outputs & caches
+outputs/
+result
+result-*
+build.ninja
+.ninja_log
+.wrangler/
+
+# Local overrides & OS metadata
+.DS_Store
+*.local

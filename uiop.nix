@@ -1,0 +1,580 @@
+# uiop.nix - Utility functions for the static site generator.
+# Usage: import ./uiop.nix { inherit pkgs; }
+{ pkgs }:
+let
+  lib = pkgs.lib;
+  uiop = rec {
+    # Pandoc Lua filter applied to every page.
+    pandocFilter = builtins.path {
+      path = ./assets/filter.lua;
+      name = "filter.lua";
+    };
+
+    # Reads each argv input as UTF-8, writes the sorted unique-character
+    # set to the final argv path. Compares-and-skips when content is
+    # unchanged so ninja `restat = 1` can prune downstream subset rebuilds.
+    extractCharsScript = pkgs.writeText "extract-chars.py" ''
+      import sys
+      *inputs, output = sys.argv[1:]
+      chars = set()
+      for p in inputs:
+          with open(p, encoding="utf-8") as f:
+              chars.update(f.read())
+      new = "".join(sorted(chars))
+      try:
+          with open(output, encoding="utf-8") as f:
+              old = f.read()
+      except FileNotFoundError:
+          old = None
+      if old != new:
+          with open(output, "w", encoding="utf-8") as f:
+              f.write(new)
+    '';
+
+    # -- Path utilities --
+    filterExtensions =
+      extensions: paths:
+      let
+        suffixes = map (ext: ".${lib.toLower ext}") extensions;
+        match =
+          path:
+          let
+            s = lib.toLower (builtins.toString path);
+          in
+          builtins.any (suffix: lib.hasSuffix suffix s);
+      in
+      builtins.filter match paths;
+
+    # Recursively collect all asset files from a list of directories.
+    # Returns a list of { source, srcRelPath, outputName } attrsets.
+    # source is a Nix path; srcRelPath is relative to projectRoot; outputName is the basename.
+    collectAssets =
+      extensions: projectRoot: dirs:
+      let
+        suffixes = map (ext: ".${lib.toLower ext}") extensions;
+        isAsset = name: builtins.any (suffix: lib.hasSuffix suffix (lib.toLower name)) suffixes;
+        collectDir =
+          dir:
+          let
+            entries = builtins.readDir dir;
+            process =
+              name: type:
+              if type == "directory" then
+                collectDir (dir + "/${name}")
+              else if type == "regular" && isAsset name then
+                let
+                  srcPath = dir + "/${name}";
+                  relPath = lib.removePrefix (projectRoot + "/") (toString srcPath);
+                in
+                [
+                  {
+                    source = srcPath;
+                    srcRelPath = relPath;
+                    outputName = name;
+                  }
+                ]
+              else
+                [ ];
+          in
+          lib.concatLists (lib.mapAttrsToList process entries);
+      in
+      lib.concatMap collectDir dirs;
+    # -- String utilities --
+    # Shell-quote a string with single quotes.
+    shellQuote =
+      s:
+      let
+        str = toString s;
+      in
+      "'" + builtins.replaceStrings [ "'" ] [ "'\\''" ] str + "'";
+
+    # Escape dollar signs for ninja syntax.
+    ninjaEscapeDollar = s: builtins.replaceStrings [ "$" ] [ "$$" ] s;
+
+    # Escape a path for ninja build statements.
+    ninjaEscapePath = s: builtins.replaceStrings [ "$" " " ":" ] [ "$$" "$ " "$:" ] s;
+
+    # Prepare a value for a ninja variable assignment: shell-quote then ninja-escape.
+    ninjaVarValue = s: ninjaEscapeDollar (shellQuote s);
+
+    # -- Page normalization --
+
+    # Derive base name from source path: ./index.md -> "index"
+    mkPageName = source: lib.removeSuffix ".md" (builtins.baseNameOf (toString source));
+
+    # Construct output filename from prefix and name, all lowercase.
+    mkOutputFilename =
+      {
+        prefix ? null,
+        name,
+        ...
+      }:
+      lib.toLower (if prefix != null then "${prefix}--${name}.html" else "${name}.html");
+
+    # Normalize a page attrset: fill in name, output, uplink, homelink, include.
+    normalizePage =
+      page:
+      let
+        name = page.name or (mkPageName page.source);
+        prefix = page.prefix or null;
+        base = page // {
+          inherit name;
+        };
+        withPrefix = if prefix != null then base // { inherit prefix; } else removeAttrs base [ "prefix" ];
+        output = mkOutputFilename (withPrefix // { inherit prefix; });
+
+        # Auto-computed nav links; explicit page attrs override via `or`.
+        computedUplink =
+          if prefix == null then
+            false # home area: nowhere to go up to
+          else if name == "index" then
+            false # area index: already at the top
+          else
+            mkOutputFilename {
+              inherit prefix;
+              name = "index";
+            };
+        computedHomelink =
+          if prefix == null then
+            false # home area: you are home
+          else
+            "index.html";
+
+        uplink = withPrefix.uplink or computedUplink;
+        homelink = withPrefix.homelink or computedHomelink;
+        include = mkNavInclude { inherit uplink homelink; };
+        header = mkHeaderInclude { };
+        filter = pandocFilter;
+      in
+      withPrefix
+      // {
+        inherit
+          output
+          uplink
+          homelink
+          include
+          header
+          filter
+          ;
+      };
+
+    # Generate a nav HTML fragment and return its store path.
+    # uplink / homelink: a URL string to show the link, or false/null to omit it.
+    mkNavInclude =
+      { uplink, homelink }:
+      pkgs.writeText "nav-include" ''
+        <nav class="nav">
+          ${
+            if builtins.isString uplink then ''<a class="up" data-tooltip="Up" href="${uplink}"></a>'' else ""
+          }
+          ${
+            if builtins.isString homelink then
+              ''<a class="home" data-tooltip="Home" href="${homelink}"></a>''
+            else
+              ""
+          }
+        </nav>
+      '';
+
+    # Generate a <head>-include HTML fragment (favicon, etc.) and return its
+    # store path. Pages live at the output root, so the favicon href is bare.
+    mkHeaderInclude =
+      { }:
+      pkgs.writeText "header-include" ''
+        <link rel="icon" type="image/png" href="saltydragons3.png" />
+      '';
+
+    # -- Content utilities --
+
+    # Strip a trailing newline (and any preceding carriage return).
+    trim = s: lib.removeSuffix "\r" (lib.removeSuffix "\n" s);
+
+    # Extract the document title from a Markdown file using pure Nix string parsing.
+    # Handles ATX headings (# through ######), YAML front matter, and pandoc attribute blocks.
+    extractTitle =
+      source:
+      let
+        lines = lib.splitString "\n" (builtins.readFile source);
+
+        # Strip YAML front matter (--- … ---/...) if present at the top.
+        withoutFM =
+          let
+            hasFM = lines != [ ] && lib.removeSuffix "\r" (builtins.head lines) == "---";
+            skipUntilEnd =
+              ls:
+              if ls == [ ] then
+                [ ]
+              else
+                let
+                  h = lib.removeSuffix "\r" (builtins.head ls);
+                in
+                if h == "---" || h == "..." then builtins.tail ls else skipUntilEnd (builtins.tail ls);
+          in
+          if hasFM then skipUntilEnd (builtins.tail lines) else lines;
+
+        # Find the first heading line (any level: # through ######).
+        isHeading = line: builtins.match "#{1,6} .*" line != null;
+        headingLine = lib.findFirst isHeading null withoutFM;
+
+        # Strip leading hashes + space(s); right-trim trailing whitespace.
+        rawTitle =
+          if headingLine == null then
+            ""
+          else
+            let
+              m = builtins.match "#{1,6} +(.*[^ \t]|[^ \t])" headingLine;
+            in
+            if m != null then builtins.head m else "";
+
+        # Strip trailing pandoc attribute block {#id .class …}.
+        title =
+          let
+            m = builtins.match "(.*[^ ]) *[{][^}]*[}]$" rawTitle;
+          in
+          if m != null then builtins.head m else rawTitle;
+      in
+      title;
+
+    # Lowercase a string and replace non-alphanumeric runs with a single dash.
+    slugify =
+      s:
+      let
+        lower = lib.toLower s;
+        chars = lib.stringToCharacters lower;
+        isAlnum = c: builtins.match "[a-z0-9]" c != null;
+        step =
+          acc: c:
+          if isAlnum c then
+            {
+              str = acc.str + (if acc.sep && acc.str != "" then "-" else "") + c;
+              sep = false;
+            }
+          else
+            acc // { sep = true; };
+        result = builtins.foldl' step {
+          str = "";
+          sep = false;
+        } chars;
+      in
+      result.str;
+
+    # Build a page attrset from a source file and an already-computed title.
+    # extraAttrs (e.g. { css = "foo.css"; }) are merged into the result.
+    mkPageWithTitle =
+      extraAttrs: source: title:
+      let
+        name = slugify title;
+        srcAbsPath = toString source;
+        safeSource = builtins.path {
+          path = source;
+          name = "${name}.md";
+        };
+      in
+      extraAttrs
+      // {
+        inherit name title srcAbsPath;
+        source = safeSource;
+      };
+
+    # Build a page attrset from a source file, extracting the title automatically.
+    mkPage = extraAttrs: source: mkPageWithTitle extraAttrs source (extractTitle source);
+
+    # Read all .md files from dir as pages, sorted by filename.
+    # builtins.attrNames returns keys in lexicographic order.
+    readPages =
+      extraAttrs: dir:
+      let
+        mdNames = builtins.filter (n: lib.hasSuffix ".md" n) (builtins.attrNames (builtins.readDir dir));
+      in
+      map (n: mkPage extraAttrs (dir + "/${n}")) mdNames;
+
+    # Read .md files from dir as chapters: the first keeps its title as-is;
+    # subsequent entries are titled "Chapter N — <original title>" (N from 1).
+    readPagesWithPrefix =
+      prefix: extraAttrs: dir:
+      let
+        mdNames = builtins.filter (n: lib.hasSuffix ".md" n) (builtins.attrNames (builtins.readDir dir));
+        sources = map (n: dir + "/${n}") mdNames;
+        mkChapter =
+          i: source:
+          let
+            rawTitle = extractTitle source;
+            title = if i == 0 then rawTitle else "${prefix} ${toString i} — ${rawTitle}";
+          in
+          mkPageWithTitle extraAttrs source title;
+      in
+      lib.imap0 mkChapter sources;
+
+    # Generate a Markdown index body for a list of { heading, pages } sections.
+    mkIndexBody =
+      { prefix, sections }:
+      let
+        mkLink =
+          page:
+          "- [${page.title}](${
+            mkOutputFilename {
+              inherit prefix;
+              name = page.name;
+            }
+          })";
+        mkSection =
+          {
+            heading ? null,
+            pages,
+          }:
+          "## ${heading}\n\n" + ":::index\n" + lib.concatStringsSep "\n" (map mkLink pages) + "\n:::\n";
+      in
+      lib.concatStringsSep "\n\n" (map mkSection sections);
+
+    # Build an index page from a Markdown template.
+    # Supports two placeholder styles (may be mixed in one template):
+    #   <!-- INDEX:key --> replaced with only the page links for the matching section.
+    #     key is section.key if present, otherwise slugify section.heading.
+    #   <!-- INDEX --> replaced with all sections (headings + links) bundled.
+    # sections: [ { heading = "..."; pages = [...]; } ]
+    # extraAttrs (e.g. { css = "..."; }) are merged into the page attrset.
+    mkIndexPage =
+      {
+        prefix,
+        template,
+        sections,
+        extraAttrs ? { },
+      }:
+      let
+        mkLink =
+          page:
+          "- [${page.title}](${
+            mkOutputFilename {
+              inherit prefix;
+              name = page.name;
+            }
+          })";
+        sectionKey = section: section.key or (slugify (section.heading or ""));
+        mkSectionLinks =
+          section: ":::index\n" + (lib.concatStringsSep "\n" (map mkLink section.pages)) + "\n:::\n";
+        templateContent = builtins.readFile template;
+        withNamed = builtins.foldl' (
+          content: section:
+          builtins.replaceStrings [ "<!-- INDEX:${sectionKey section} -->" ] [ (mkSectionLinks section) ]
+            content
+        ) templateContent sections;
+        body = mkIndexBody { inherit prefix sections; };
+        content = builtins.replaceStrings [ "<!-- INDEX -->" ] [ body ] withNamed;
+        source = pkgs.writeText "${prefix}-index.md" content;
+        title = extractTitle template;
+      in
+      extraAttrs
+      // {
+        name = "index";
+        inherit source title;
+        epubSource = template;
+      };
+
+    # -- Area loading --
+
+    # Load a site area directory.
+    # "home" gets no prefix; other areas get their dirname as prefix.
+    loadArea =
+      projectRoot: areaPath:
+      let
+        rawPages = import areaPath { inherit lib uiop; };
+        dirName = builtins.baseNameOf (toString areaPath);
+        prefix = if dirName == "home" then null else dirName;
+        normPages = map (page: normalizePage ({ inherit prefix; } // page)) rawPages;
+        addSrcRelPath =
+          page:
+          let
+            absPath =
+              if page ? srcAbsPath then
+                page.srcAbsPath
+              else if builtins.isPath page.source then
+                toString page.source
+              else
+                null;
+            relPath = if absPath != null then lib.removePrefix (projectRoot + "/") absPath else null;
+          in
+          if relPath != null && relPath != absPath then page // { srcRelPath = relPath; } else page;
+      in
+      map addSrcRelPath normPages;
+
+    # Load and flatten all site areas into one list.
+    flattenAreas = projectRoot: areaPaths: lib.concatMap (loadArea projectRoot) areaPaths;
+
+    # -- Ninja file generation --
+
+    # Structural keys: not passed as environment variables.
+    structuralKeys = [
+      "source"
+      "output"
+      "uplink"
+      "homelink"
+      "srcAbsPath"
+      "srcRelPath"
+      "epubSource"
+    ];
+
+    # Collect the union of all env-var names across all pages.
+    collectEnvVarNames =
+      pages:
+      let
+        perPage = map (p: builtins.attrNames (removeAttrs p structuralKeys)) pages;
+      in
+      lib.unique (lib.concatLists perPage);
+
+    # Generate the ninja rule definition.
+    mkNinjaRule =
+      {
+        envVarNames,
+        buildScript,
+        shell,
+      }:
+      let
+        dollar = "$";
+        mkEnvPart = k: "${k}=${dollar}{${k}}";
+        envParts = map mkEnvPart envVarNames;
+        envString = lib.concatStringsSep " " envParts;
+      in
+      "rule buildpage\n"
+      + "  command = env ${envString} ${shell} ${buildScript} $in $out\n"
+      + "  description = Building $out\n";
+
+    # Generate a ninja build statement for one page.
+    pageToNinjaBuild =
+      page:
+      let
+        dollar = "$";
+        sourceRef =
+          if page ? srcRelPath then
+            "${dollar}{src}/${ninjaEscapePath page.srcRelPath}"
+          else
+            ninjaEscapePath "${page.source}";
+        outputRef = "${dollar}{out}/${ninjaEscapePath page.output}";
+        envAttrs = lib.filterAttrs (_: v: v != null) (removeAttrs page structuralKeys);
+        varLines = lib.mapAttrsToList (k: v: "  ${k} = ${ninjaVarValue v}") envAttrs;
+        allLines = [
+          "build ${outputRef}: buildpage ${sourceRef}"
+        ]
+        ++ varLines;
+      in
+      lib.concatStringsSep "\n" allLines;
+
+    # Ninja rule definition for copying a file verbatim.
+    mkNinjaCopyRule =
+      "rule copyfile\n" + "  command = cp $in $out\n" + "  description = Copying $out\n";
+
+    # Generate a ninja build statement to copy one asset.
+    # Assets gathered from the project tree carry `srcRelPath` and are
+    # resolved through `$src` (which differs between dev shell and nix build).
+    # Assets pulled in from Nix store paths (e.g. fonts from pkgs.et-book)
+    # carry only `source` — substitute the absolute store path directly.
+    assetToNinjaBuild =
+      asset:
+      let
+        dollar = "$";
+        sourceRef =
+          if asset ? srcRelPath then
+            "${dollar}{src}/${ninjaEscapePath asset.srcRelPath}"
+          else
+            ninjaEscapePath (toString asset.source);
+        outputRef = "${dollar}{out}/${ninjaEscapePath asset.outputName}";
+      in
+      "build ${outputRef}: copyfile ${sourceRef}";
+
+    # Ninja rule definitions for font subsetting. extractchars unions the
+    # codepoints of every page's rendered HTML into a single chars file;
+    # subsetfont runs hb-subset against a source TTF and emits WOFF2 directly.
+    mkNinjaSubsetRules =
+      "rule extractchars\n"
+      + "  command = ${pkgs.python3}/bin/python3 ${extractCharsScript} $in $out\n"
+      + "  description = Extracting glyph set from $in\n"
+      + "  restat = 1\n"
+      + "\n"
+      + "rule subsetfont\n"
+      + "  command = ${pkgs.harfbuzz.dev}/bin/hb-subset --text-file=$chars --layout-features='*' --output-format=woff2 $in -o $out\n"
+      + "  description = Subsetting $out\n";
+
+    # Generate the chars.txt build statement: depends on every page output.
+    mkCharsetBuild =
+      pages:
+      let
+        dollar = "$";
+        htmlRefs = lib.concatMapStringsSep " " (
+          p: "${dollar}{out}/${ninjaEscapePath p.output}"
+        ) pages;
+      in
+      "build ${dollar}{out}/chars.txt: extractchars ${htmlRefs}";
+
+    # Generate a ninja build statement that subsets one font.
+    # The source is an absolute path to a TTF; the output is a WOFF2 in $out.
+    # The chars file is an implicit dep so ninja rebuilds the font when it
+    # changes, and is also bound to the $chars rule variable.
+    fontAssetToNinjaBuild =
+      asset:
+      let
+        dollar = "$";
+        sourceRef = ninjaEscapePath (toString asset.source);
+        outputRef = "${dollar}{out}/${ninjaEscapePath asset.outputName}";
+        charsRef = "${dollar}{out}/chars.txt";
+      in
+      "build ${outputRef}: subsetfont ${sourceRef} | ${charsRef}\n"
+      + "  chars = ${charsRef}";
+
+    # Generate a shell snippet that prepends ninja variable assignments and writes the result.
+    # output: destination path for the assembled file, defaults to "build.ninja".
+    # env: the build link farm, where `build.ninja` can be found.
+    # All remaining attributes are treated as varname = shell-token pairs.
+    # Values may be Nix-expanded store paths or shell variable references (e.g. "$out", "$PWD").
+    # Variables are emitted in alphabetical order (builtins.attrNames).
+    mkBuildNinja =
+      attrs:
+      let
+        output = if attrs ? output then attrs.output else "build.ninja";
+        vars = removeAttrs attrs [
+          "buildNinja"
+          "output"
+        ];
+        names = builtins.attrNames vars;
+        format = lib.concatMapStringsSep ''\n'' (name: "${name}=%s") names;
+        args = lib.concatStringsSep " " (map (name: ''"'' + vars.${name} + ''"'') names);
+      in
+      ''
+        {
+          printf '${format}\n' ${args} | sed -E -e 's/ /$ /g'
+          cat ${attrs.buildNinja}
+        } > ${output}
+      '';
+
+    # Generate the complete build.ninja file content.
+    mkNinjaBuildFile =
+      {
+        buildScript,
+        shell,
+        pages,
+        assets ? [ ],
+        fontAssets ? [ ],
+      }:
+      let
+        envVarNames = collectEnvVarNames pages;
+        pageRule = mkNinjaRule { inherit envVarNames buildScript shell; };
+        pageBuilds = map pageToNinjaBuild pages;
+        assetBuilds = map assetToNinjaBuild assets;
+        fontBuilds = map fontAssetToNinjaBuild fontAssets;
+        hasFonts = fontAssets != [ ];
+        subsetRules = lib.optional hasFonts mkNinjaSubsetRules;
+        charsBuild = lib.optional hasFonts (mkCharsetBuild pages);
+      in
+      lib.concatStringsSep "\n\n" (
+        [
+          pageRule
+          mkNinjaCopyRule
+        ]
+        ++ subsetRules
+        ++ pageBuilds
+        ++ assetBuilds
+        ++ charsBuild
+        ++ fontBuilds
+        ++ [ "" ]
+      );
+  };
+in
+uiop

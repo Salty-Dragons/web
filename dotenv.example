@@ -1,0 +1,12 @@
+# Copy this file to .env and fill in your secrets.
+# Do not commit .env to version control.
+
+# Cloudflare Account & Credentials
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_API_TOKEN=your-api-token
+
+# Cloudflare R2 S3 Storage (media & asset uploads)
+AWS_ACCESS_KEY_ID=your-r2-access-key-id
+AWS_SECRET_ACCESS_KEY=your-r2-secret-access-key
+AWS_ENDPOINT_URL_S3=https://<account_id>.r2.cloudflarestorage.com
+AWS_REGION=auto

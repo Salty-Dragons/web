@@ -1,0 +1,20 @@
+h1:not(.plain) ~ p:first-of-type::first-letter {
+  font-family: var(--font-family-dropcaps);
+  font-style: italic;
+  font-weight: 1000;
+  float: left;
+  padding-bottom: 2px;
+  padding-left: 40px;
+  margin-top: -1rem;
+  margin-bottom: -20px;
+  margin-left: -40px;
+  font-size: clamp(4rem, 20vw, 6.67rem);
+  line-height: 1em;
+  color: rgba(0, 0, 0, 0);
+  background-image: linear-gradient(-45deg, #322814, #998250, #322814);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+h1:not(.plain) ~ p:first-of-type::first-line {
+  font-variant: small-caps;
+}

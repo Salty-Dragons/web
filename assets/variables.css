@@ -1,0 +1,25 @@
+@import url("fonts.css");
+
+:root {
+  /* Sea-chart palette */
+  --fog: #DFE3DC;
+  --ink: #0E1F2A;
+  --rust: #B4513C;
+  --brass: #C9A24A;
+  --verdigris: #4A8278;
+  --abyss: #324A52;
+
+  /* Legacy HB_Color_* aliases preserved for global.css */
+  --HB_Color_Background: var(--fog);
+  --HB_Color_Accent: #C6D2CC;
+  --HB_Color_HeaderUnderline: var(--brass);
+  --HB_Color_HeaderText: var(--rust);
+
+  --font-family: 'et-book', serif;
+  --font-family-headers: 'IM Fell DW Pica SC', serif;
+  --font-family-italic: 'IM Fell English', serif;
+  --font-family-dropcaps: 'IM Fell English', serif;
+  --font-family-ornamental: 'Zapf Dingbats', 'Wingdings', 'Symbols', 'Noto Sans Symbols', serif;
+
+  --background-image: none;
+}

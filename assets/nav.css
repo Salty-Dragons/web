@@ -1,0 +1,47 @@
+.nav {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nav:has(.home:only-child) {
+  justify-content: flex-end;
+}
+
+.nav a {
+  width: 64px;
+  height: 64px;
+  display: block;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  background: center/contain no-repeat;
+  position: relative;
+}
+
+.nav a:visited {
+}
+
+.nav a:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--HB_Color_HeaderText);
+  background-color: var(--HB_Color_Background);
+  border: 1px solid var(--HB_Color_HeaderText);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.nav .home {
+  background-image: url("homebutton.png");
+}
+
+.nav .up {
+  background-image: url("upbutton.png");
+}
