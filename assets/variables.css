@@ -1,0 +1,11 @@
+:root {
+  --HB_Color_Background: #EEE5CE;
+  --HB_Color_Accent: #D8D4B0;
+  --HB_Color_HeaderUnderline: #C0AD6A;
+  --HB_Color_HeaderText: #58180D;
+  --font-family: 'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', P052, serif;
+  --font-family-headers: 'MrEavesRemake';
+  --font-family-dropcaps: 'SolberaImitationRemake';
+  --font-family-ornamental: 'Zapf Dingbats', 'Wingdings', 'Symbols', 'Noto Sans Symbols', serif;
+  --background-image: url(bg_parchment.jpg);
+}

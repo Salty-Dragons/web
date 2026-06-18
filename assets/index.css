@@ -1,0 +1,108 @@
+@import url("reset.css");
+@import url("variables.css");
+@import url("nav.css");
+@import url("fonts.css");
+@import url("figures.css");
+html {
+  background-color: var(--HB_Color_Background);
+  background-image: var(--background-image);
+  font-family: var(--font-family);
+}
+body {
+  max-width: 80rem;
+  margin: 2rem auto;
+  padding: 2rem;
+  border-radius: 0.2rem;
+  box-shadow: 0 0 1rem rgba(0, 0, 0, 0.7);
+  border: 0.1rem solid var(--HB_Color_Background);
+  position: relative;
+  line-height: 1.5;
+  text-align: center;
+}
+body::before,
+body::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0,0 L100,0 L95,10 L5,10 Z" fill="%23c9ad6a"/></svg>');
+  background-size: 100% 100%;
+}
+body::before { top: 0; }
+body::after { bottom: 0; transform: rotate(180deg); }
+
+h1, h2 {
+    font-family: var(--font-family-headers);
+    color: var(--HB_Color_HeaderText);
+    margin-top: 1rem;
+}
+h1 { font-size: 3rem; }
+h2 { font-size: 2rem; }
+
+hr {
+  border: 0;
+  height: 1px;
+  margin: 2.5rem auto;
+  width: 60%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--HB_Color_HeaderUnderline) 20%,
+    var(--HB_Color_HeaderUnderline) 80%,
+    transparent
+  );
+}
+
+a,
+a:visited {
+  color: var(--HB_Color_HeaderText);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--HB_Color_HeaderUnderline);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+a:hover,
+a:focus {
+  text-decoration-color: var(--HB_Color_HeaderText);
+  text-decoration-thickness: 2px;
+}
+
+div.index > ul {
+  padding: 0;
+  justify-content: center;
+  list-style: none;
+  gap: 0.25rem;
+}
+
+div.index > ul li a, div.index > ul li a:visited {
+  margin-top: 0.25rem;
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--HB_Color_HeaderText);
+  color: var(--HB_Color_Background);
+  text-decoration: none;
+  border: medium;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+section.level1 > div.index ul {
+    margin: 0;
+    display: flex;
+  }
+
+section.level2 > div.index ul {
+    column-width: 25rem;
+    column-gap: 2rem;
+    li {
+      break-inside: avoid-column;
+    }
+    li a, li a:visited {
+      width: 20rem;
+    }
+}
+h1.invisible {
+  display: none
+}
