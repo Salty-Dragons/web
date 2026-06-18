@@ -1,0 +1,14 @@
+@font-face {
+	font-family : "MrEavesRemake";
+	font-style : normal;
+	font-weight : normal;
+	src : url(font_MrEavesRemake.woff2);
+}
+
+@font-face {
+	font-family : "SolberaImitationRemake";
+	font-style : normal;
+	font-style : italic;
+	font-weight : 100 1000;
+	src : url(font_SolberaImitationRemake.woff2);
+}

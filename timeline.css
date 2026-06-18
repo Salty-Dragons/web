@@ -1,0 +1,181 @@
+/* ============================================================
+   Appendix D — Campaign Timeline
+
+   Two distinct elements on this page:
+
+   1. The campaign timeline (Brussendar → Horisal). One continuous
+      gold rail runs through every month subsection. Each month's
+      h3 is a label on the rail. Each event is a dot on the rail.
+
+   2. The History section. Centuries of world lore — *not* the
+      same kind of thing as the daily campaign log. Rendered as a
+      chronicle: aligned date column on the left, event on the right.
+      No rail.
+
+   All rules are scoped to #appendix-d-campaign-timeline so nothing
+   leaks to other pages that share the dng stylesheet.
+   ============================================================ */
+
+/* ---- 1. Campaign timeline ---------------------------------- */
+
+/* Butt month subsections together so one rail flows through all of them. */
+#appendix-d-campaign-timeline > section.level3 + section.level3 {
+  margin-top: 0;
+}
+
+#appendix-d-campaign-timeline > section.level3 {
+  position: relative;
+  padding-left: 2.4em;
+}
+
+/* The rail. Bottom extends past the section's box so it bridges the
+   margin gap that global.css's `ul { margin-bottom: 0.8em }` opens up
+   between adjacent month sections. */
+#appendix-d-campaign-timeline > section.level3::before {
+  content: "";
+  position: absolute;
+  left: 0.6em;
+  top: 0;
+  bottom: -1em;
+  width: 2px;
+  background: var(--HB_Color_HeaderUnderline);
+}
+
+/* The first month's rail starts at the diamond's center so the diamond
+   reads as the origin of the rail. (Was 1.8em, which left a visible
+   stub of rail above the diamond.) */
+#appendix-d-campaign-timeline > section.level3:first-of-type::before {
+  top: 2.6em;
+}
+
+/* The earliest event is dated only as "Day -60 to -90" — the exact
+   start is unknown. Fade the rail toward the bottom so it tapers
+   out into uncertainty.
+   :last-of-type matches by tag, not class, so it would pick #history
+   (a sibling section). Match instead by "the section.level3 that
+   immediately precedes #history" — that's the last campaign month. */
+#appendix-d-campaign-timeline > section.level3:has(+ section#history)::before {
+  bottom: -3em;
+  background: linear-gradient(
+    to bottom,
+    rgb(192, 173, 106) 0%,
+    rgb(192, 173, 106) 30%,
+    rgba(192, 173, 106, 0) 100%
+  );
+}
+
+/* Belt-and-suspenders: kill the ul margin-bottom so the rail extension
+   above isn't fighting an enlarged gap. */
+#appendix-d-campaign-timeline > section.level3 > ul {
+  margin-bottom: 0;
+}
+
+/* The h3 sits in the section's content column, to the right of the
+   rail. No background overlay — the rail must remain visible across
+   the entire campaign timeline so it reads as one thing. */
+#appendix-d-campaign-timeline > section.level3 > h3 {
+  margin-left: 0;
+  padding-left: 0;
+  position: relative;
+}
+
+/* The event list. Padding is 0 — the dots sit in the section's own
+   padding column, lined up with the rail. */
+#appendix-d-campaign-timeline > section.level3 > ul {
+  list-style: none;
+  padding-left: 0;
+  margin-left: 0;
+}
+
+#appendix-d-campaign-timeline > section.level3 > ul > li {
+  position: relative;
+  margin-top: 0.55em;
+  margin-bottom: 0.55em;
+  line-height: 1.3em;
+}
+
+/* Dot marker centered on the rail.
+   Rail center sits at (section left) + 0.6em + 1px. The li starts at
+   (section left) + 2.4em. So dot.left in li-coords =
+   0.6em + 1px - 2.4em - dot_radius = -2.075em + 1px. */
+#appendix-d-campaign-timeline > section.level3 > ul > li::before {
+  content: "";
+  position: absolute;
+  left: calc(-2.075em + 1px);
+  top: 0.42em;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--HB_Color_HeaderText);
+  box-shadow:
+    0 0 0 3px var(--HB_Color_Background),
+    0 0 0 4px var(--HB_Color_HeaderUnderline);
+}
+
+#appendix-d-campaign-timeline > section.level3 > ul > li > strong {
+  font-family: var(--font-family-headers);
+  color: var(--HB_Color_HeaderText);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Only the Day-N italic right after the date strong gets the muted
+   gold treatment — italic ship names (Remorhaz, Frostfang) further
+   along the line stay as ordinary italic body text. */
+#appendix-d-campaign-timeline > section.level3 > ul > li > strong + em {
+  font-style: italic;
+  color: #8b6914;
+  font-weight: 500;
+}
+
+/* The most recent event — first li of the first month — gets a gold
+   diamond marker instead of a dot. It reads as "the present", the
+   leading edge of the campaign so far. */
+#appendix-d-campaign-timeline >
+  section.level3:first-of-type >
+  ul >
+  li:first-of-type::before {
+  width: 0.85em;
+  height: 0.85em;
+  left: calc(-2.225em + 1px);
+  top: 0.27em;
+  background: var(--HB_Color_HeaderUnderline);
+  border-radius: 0;
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 3px var(--HB_Color_Background);
+}
+
+/* ---- 2. History — chronicle layout ------------------------- */
+
+#appendix-d-campaign-timeline > section#history {
+  margin-top: 4rem;
+}
+
+#appendix-d-campaign-timeline > section#history > ul {
+  list-style: none;
+  padding-left: 0;
+  margin-left: 0;
+}
+
+#appendix-d-campaign-timeline > section#history > ul > li {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  column-gap: 1.4em;
+  row-gap: 0.4em;
+  align-items: baseline;
+  padding: 0.5em 0;
+  border-top: 1px solid var(--HB_Color_Accent);
+  line-height: 1.3em;
+}
+
+#appendix-d-campaign-timeline > section#history > ul > li:last-child {
+  border-bottom: 1px solid var(--HB_Color_Accent);
+}
+
+#appendix-d-campaign-timeline > section#history > ul > li > strong {
+  font-family: var(--font-family-headers);
+  color: var(--HB_Color_HeaderText);
+  font-weight: 600;
+  text-align: right;
+  letter-spacing: 0;
+}
