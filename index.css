@@ -4,7 +4,9 @@
 
 html {
   background-color: var(--abyss);
-  background-image: none;
+  background-image: url("bg_sea_chart.jpg");
+  background-size: auto;
+  background-repeat: repeat;
   font-family: var(--font-family);
   color: var(--ink);
 }
@@ -17,10 +19,12 @@ body {
   outline: 1px solid var(--brass);
   outline-offset: 6px;
   background-color: var(--fog);
+  background-image: url("fg_sea_chart.jpg");
+  background-size: auto;
+  background-repeat: repeat;
   position: relative;
   font-size: 1.3rem;
   line-height: 1.6;
-  color: var(--ink);
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
 }
 
