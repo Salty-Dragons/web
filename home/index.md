@@ -20,3 +20,6 @@ getting started.
 ::: cta
 [Join us on Discord](https://discord.gg/dxyr5ZQtv)
 :::
+
+![](dragon-531.png){.dragon .dragon-tl aria-hidden="true"}
+![](dragon-579.png){.dragon .dragon-br aria-hidden="true"}
