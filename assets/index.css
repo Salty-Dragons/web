@@ -9,15 +9,18 @@ html {
   font-family: var(--font-family);
 }
 body {
-  max-width: 80rem;
+  max-width: 60rem;
   margin: 2rem auto;
-  padding: 2rem;
+  padding: 2rem 3rem;
   border-radius: 0.2rem;
   box-shadow: 0 0 1rem rgba(0, 0, 0, 0.7);
   border: 0.1rem solid var(--HB_Color_Background);
   position: relative;
-  line-height: 1.5;
-  text-align: center;
+  font-size: 1.2rem;
+  line-height: 1.6;
+}
+body > section > p {
+  margin: 0 0 1rem;
 }
 body::before,
 body::after {
@@ -37,8 +40,17 @@ h1, h2 {
     color: var(--HB_Color_HeaderText);
     margin-top: 1rem;
 }
-h1 { font-size: 3rem; }
+h1 { font-size: 3.5rem; text-align: center; }
 h2 { font-size: 2rem; }
+
+section#main > h1 + p {
+  font-size: 1.4rem;
+  text-align: center;
+  margin: 0.25rem auto 2rem;
+  max-width: 50rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--HB_Color_HeaderUnderline);
+}
 
 hr {
   border: 0;
@@ -67,6 +79,27 @@ a:hover,
 a:focus {
   text-decoration-color: var(--HB_Color_HeaderText);
   text-decoration-thickness: 2px;
+}
+
+div.cta {
+  text-align: center;
+  margin: 2rem 0 2.5rem;
+}
+div.cta a,
+div.cta a:visited {
+  display: inline-block;
+  padding: 0.75rem 1.75rem;
+  background-color: var(--HB_Color_HeaderText);
+  color: var(--HB_Color_Background);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 0.25rem;
+}
+div.cta a:hover,
+div.cta a:focus {
+  filter: brightness(1.15);
+  text-decoration: none;
 }
 
 div.index > ul {
