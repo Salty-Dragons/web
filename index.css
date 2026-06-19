@@ -1,105 +1,119 @@
 @import url("reset.css");
 @import url("variables.css");
 @import url("nav.css");
-@import url("fonts.css");
-@import url("figures.css");
+
 html {
-  background-color: var(--HB_Color_Background);
-  background-image: var(--background-image);
+  background-color: var(--abyss);
+  background-image: none;
   font-family: var(--font-family);
+  color: var(--ink);
 }
+
 body {
-  max-width: 60rem;
-  margin: 2rem auto;
-  padding: 2rem 3rem;
-  border-radius: 0.2rem;
-  box-shadow: 0 0 1rem rgba(0, 0, 0, 0.7);
-  border: 0.1rem solid var(--HB_Color_Background);
+  max-width: 58rem;
+  margin: 4rem auto;
+  padding: 3rem 3.5rem 2.5rem;
+  border: 1px solid var(--brass);
+  outline: 1px solid var(--brass);
+  outline-offset: 6px;
+  background-color: var(--fog);
   position: relative;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   line-height: 1.6;
+  color: var(--ink);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
 }
-body > section > p {
-  margin: 0 0 1rem;
-}
+
+/* Strip the global ornament and the previous gold scrollwork */
 body::before,
 body::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 10px;
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0,0 L100,0 L95,10 L5,10 Z" fill="%23c9ad6a"/></svg>');
-  background-size: 100% 100%;
+  content: none;
+  background-image: none;
 }
-body::before { top: 0; }
-body::after { bottom: 0; transform: rotate(180deg); }
 
 h1, h2 {
-    font-family: var(--font-family-headers);
-    color: var(--HB_Color_HeaderText);
-    margin-top: 1rem;
+  font-family: var(--font-family-headers);
+  color: var(--rust);
+  margin-top: 0;
+  letter-spacing: 0.04em;
+  font-weight: 400;
 }
-h1 { font-size: 3.5rem; text-align: center; }
+h1 {
+  font-size: 3.5rem;
+  text-align: center;
+  margin: 0.25rem 0 0;
+  line-height: 1.05;
+}
 h2 { font-size: 2rem; }
 
+/* Subtitle in Garamond italic */
 section#main > h1 + p {
-  font-size: 1.4rem;
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: 1.5rem;
   text-align: center;
-  margin: 0.25rem auto 2rem;
-  max-width: 50rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--HB_Color_HeaderUnderline);
+  color: var(--ink);
+  margin: 0.75rem auto 0;
+  max-width: 46rem;
 }
 
-hr {
-  border: 0;
-  height: 1px;
-  margin: 2.5rem auto;
-  width: 60%;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--HB_Color_HeaderUnderline) 20%,
-    var(--HB_Color_HeaderUnderline) 80%,
-    transparent
-  );
+/* Compass rose serves as the divider between subtitle and body */
+section#main > h1 + p::after {
+  content: "";
+  display: block;
+  height: 60px;
+  margin: 1.75rem auto 2rem;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 60' aria-hidden='true'><line x1='0' y1='30' x2='84' y2='30' stroke='%23C9A24A' stroke-width='0.6'/><line x1='156' y1='30' x2='240' y2='30' stroke='%23C9A24A' stroke-width='0.6'/><g transform='translate(120,30)'><circle r='24' fill='none' stroke='%23C9A24A' stroke-width='0.5' opacity='0.5'/><line x1='0' y1='0' x2='12' y2='-12' stroke='%23C9A24A' stroke-width='0.4' opacity='0.55'/><line x1='0' y1='0' x2='-12' y2='-12' stroke='%23C9A24A' stroke-width='0.4' opacity='0.55'/><line x1='0' y1='0' x2='12' y2='12' stroke='%23C9A24A' stroke-width='0.4' opacity='0.55'/><line x1='0' y1='0' x2='-12' y2='12' stroke='%23C9A24A' stroke-width='0.4' opacity='0.55'/><polygon points='0,-24 -3,-1 0,-1' fill='%23C9A24A'/><polygon points='0,-24 3,-1 0,-1' fill='%23B4513C'/><polygon points='0,24 -3,1 0,1' fill='%23B4513C'/><polygon points='0,24 3,1 0,1' fill='%23C9A24A'/><polygon points='24,0 1,-3 1,0' fill='%23C9A24A'/><polygon points='24,0 1,3 1,0' fill='%23B4513C'/><polygon points='-24,0 -1,-3 -1,0' fill='%23B4513C'/><polygon points='-24,0 -1,3 -1,0' fill='%23C9A24A'/><circle r='2.2' fill='%230E1F2A'/></g></svg>");
+}
+
+body > section > p {
+  margin: 0 0 1.1rem;
 }
 
 a,
 a:visited {
-  color: var(--HB_Color_HeaderText);
-  font-weight: 700;
+  color: var(--ink);
+  font-weight: 600;
   text-decoration: underline;
-  text-decoration-color: var(--HB_Color_HeaderUnderline);
+  text-decoration-color: var(--verdigris);
   text-decoration-thickness: 1px;
-  text-underline-offset: 0.15em;
+  text-underline-offset: 0.22em;
 }
 a:hover,
 a:focus {
-  text-decoration-color: var(--HB_Color_HeaderText);
+  color: var(--rust);
+  text-decoration-color: var(--rust);
   text-decoration-thickness: 2px;
 }
 
 div.cta {
   text-align: center;
-  margin: 2rem 0 2.5rem;
+  margin: 2.5rem 0 0.5rem;
 }
 div.cta a,
 div.cta a:visited {
   display: inline-block;
-  padding: 0.75rem 1.75rem;
-  background-color: var(--HB_Color_HeaderText);
-  color: var(--HB_Color_Background);
-  font-size: 1.25rem;
-  font-weight: 700;
+  padding: 0.85rem 2.25rem;
+  background-color: var(--rust);
+  color: var(--fog);
+  font-family: var(--font-family-headers);
+  font-size: 1.3rem;
+  letter-spacing: 0.12em;
   text-decoration: none;
-  border-radius: 0.25rem;
+  border: 1px solid var(--brass);
 }
 div.cta a:hover,
 div.cta a:focus {
-  filter: brightness(1.15);
+  background-color: var(--ink);
+  color: var(--fog);
   text-decoration: none;
+}
+div.cta a:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 4px;
 }
 
 div.index > ul {
@@ -108,34 +122,36 @@ div.index > ul {
   list-style: none;
   gap: 0.25rem;
 }
-
-div.index > ul li a, div.index > ul li a:visited {
+div.index > ul li a,
+div.index > ul li a:visited {
   margin-top: 0.25rem;
   display: inline-block;
   padding: 0.25rem 0.5rem;
-  background-color: var(--HB_Color_HeaderText);
-  color: var(--HB_Color_Background);
+  background-color: var(--rust);
+  color: var(--fog);
   text-decoration: none;
   border: medium;
-  border-radius: 0.25rem;
+  border-radius: 0;
   cursor: pointer;
 }
-
 section.level1 > div.index ul {
-    margin: 0;
-    display: flex;
-  }
-
-section.level2 > div.index ul {
-    column-width: 25rem;
-    column-gap: 2rem;
-    li {
-      break-inside: avoid-column;
-    }
-    li a, li a:visited {
-      width: 20rem;
-    }
+  margin: 0;
+  display: flex;
 }
-h1.invisible {
-  display: none
+section.level2 > div.index ul {
+  column-width: 25rem;
+  column-gap: 2rem;
+  li { break-inside: avoid-column; }
+  li a, li a:visited { width: 20rem; }
+}
+
+h1.invisible { display: none; }
+
+@media (max-width: 640px) {
+  body {
+    margin: 1.5rem auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { font-size: 2.5rem; }
+  section#main > h1 + p { font-size: 1.25rem; }
 }
