@@ -122,6 +122,7 @@ let
         uplink = withPrefix.uplink or computedUplink;
         homelink = withPrefix.homelink or computedHomelink;
         include = mkNavInclude { inherit uplink homelink; };
+        header = mkHeaderInclude { };
         filter = pandocFilter;
       in
       withPrefix
@@ -131,6 +132,7 @@ let
           uplink
           homelink
           include
+          header
           filter
           ;
       };
@@ -151,6 +153,14 @@ let
               ""
           }
         </nav>
+      '';
+
+    # Generate a <head>-include HTML fragment (favicon, etc.) and return its
+    # store path. Pages live at the output root, so the favicon href is bare.
+    mkHeaderInclude =
+      { }:
+      pkgs.writeText "header-include" ''
+        <link rel="icon" type="image/png" href="saltydragons3.png" />
       '';
 
     # -- Content utilities --

@@ -2,6 +2,8 @@
 
 _A community for Dungeons & Dragons organized play in Sausalito._
 
+![](saltydragons3.png){aria-hidden="true"}
+
 We meet semi-weekly at [Bacchus and Venus](https://www.bacchusandvenus.com)
 to play [D&D 5.5e](https://www.dndbeyond.com/sources/dnd/br-2024) under
 [Adventurers League](https://www.adventurersleague.info) (AL) rules.
@@ -22,4 +24,4 @@ getting started.
 :::
 
 ![](dragon-531.png){.dragon .dragon-tl aria-hidden="true"}
-![](dragon-579.png){.dragon .dragon-br aria-hidden="true"}
+![](dragon-581.png){.dragon .dragon-br aria-hidden="true"}

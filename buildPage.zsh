@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 setopt errexit pipefail
-: ${title:?} ${css:?} ${include:?} ${filter:?}
+: ${title:?} ${css:?} ${include:?} ${header:?} ${filter:?}
 
 (( ${#argv} == 2 )) || exit 2
 
@@ -25,6 +25,7 @@ cmd=(
     --section-divs
     --standalone
     --css=${css}
+    --include-in-header=${header}
     --include-before-body=${include}
     --to=html
 )

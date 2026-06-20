@@ -61,20 +61,19 @@ section#main > h1 + p {
   max-width: 46rem;
 }
 
-/* Compass rose serves as the divider between subtitle and body */
-section#main > h1 + p::after {
-  content: "";
-  display: block;
-  height: 60px;
-  margin: 1.75rem auto 2rem;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 60' aria-hidden='true'><line x1='0' y1='30' x2='84' y2='30' stroke='%23C9A24A' stroke-width='0.6'/><line x1='156' y1='30' x2='240' y2='30' stroke='%23C9A24A' stroke-width='0.6'/><g transform='translate(120,30)'><circle r='24' fill='none' stroke='%23C9A24A' stroke-width='0.5' opacity='0.5'/><line x1='0' y1='0' x2='12' y2='-12' stroke='%23C9A24A' stroke-width='0.4' opacity='0.55'/><line x1='0' y1='0' x2='-12' y2='-12' stroke='%23C9A24A' stroke-width='0.4' opacity='0.55'/><line x1='0' y1='0' x2='12' y2='12' stroke='%23C9A24A' stroke-width='0.4' opacity='0.55'/><line x1='0' y1='0' x2='-12' y2='12' stroke='%23C9A24A' stroke-width='0.4' opacity='0.55'/><polygon points='0,-24 -3,-1 0,-1' fill='%23C9A24A'/><polygon points='0,-24 3,-1 0,-1' fill='%23B4513C'/><polygon points='0,24 -3,1 0,1' fill='%23B4513C'/><polygon points='0,24 3,1 0,1' fill='%23C9A24A'/><polygon points='24,0 1,-3 1,0' fill='%23C9A24A'/><polygon points='24,0 1,3 1,0' fill='%23B4513C'/><polygon points='-24,0 -1,-3 -1,0' fill='%23B4513C'/><polygon points='-24,0 -1,3 -1,0' fill='%23C9A24A'/><circle r='2.2' fill='%230E1F2A'/></g></svg>");
-}
-
 body > section > p {
   margin: 0 0 1.1rem;
+}
+
+/* Centered, size-capped content images (excludes the decorative dragons,
+   which are absolutely positioned with their own display rules).
+   max-width clamps to the parent on narrow viewports so the image never
+   overflows the parchment's right padding. */
+section#main > p > img:not(.dragon) {
+  display: block;
+  margin: 0.5rem auto 1.75rem;
+  max-width: min(20rem, 100%);
+  height: auto;
 }
 
 a,
