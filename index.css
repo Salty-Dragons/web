@@ -151,6 +151,61 @@ section.level2 > div.index ul {
 
 h1.invisible { display: none; }
 
+/* Decorative dragons with tiered fallback positioning by viewport width:
+   - ≥ 1100px (tier 1): perched on the body's top-left and bottom-right
+     corners, overlapping past the body padding into corner whitespace.
+   - ≥ 32rem  (tier 2): both sit side-by-side below the body, aligned to
+     its bottom-left and bottom-right corners — no overlap of body.
+   - ≥ 15rem  (tier 3): both stacked vertically below the body — the
+     left dragon (531) directly under the body on the left side, the
+     right dragon (579) under it on the right side.
+   - narrower than 15rem: both hidden. */
+img.dragon {
+  display: none;
+  position: absolute;
+  width: 13rem;
+  height: auto;
+  pointer-events: none;
+  z-index: 10;
+  margin: 0;
+}
+
+/* Tier 3 — stacked vertically below body, left dragon on left, right on right. */
+@media (min-width: 15rem) {
+  img.dragon-tl {
+    display: block;
+    top: calc(100% + 1rem);
+    left: 0;
+  }
+  img.dragon-br {
+    display: block;
+    top: calc(100% + 15rem); /* 1rem gap + 13rem dragon-tl + 1rem gap */
+    right: 0;
+  }
+}
+
+/* Tier 2 — break the stack: right dragon moves up alongside the left. */
+@media (min-width: 32rem) {
+  img.dragon-br {
+    top: calc(100% + 1rem);
+  }
+}
+
+/* Tier 1 — both leap up to the body's diagonal corners with overlap. */
+@media (min-width: 1100px) {
+  img.dragon-tl {
+    top: -2.5rem;
+    left: auto;
+    right: calc(100% - 8rem);
+  }
+  img.dragon-br {
+    top: auto;
+    bottom: -2.5rem;
+    right: auto;
+    left: calc(100% - 8rem);
+  }
+}
+
 @media (max-width: 640px) {
   body {
     margin: 1.5rem auto;
