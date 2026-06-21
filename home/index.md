@@ -20,7 +20,7 @@ At our table, scheduling lives on Discord — and so do resources for
 getting started.
 
 ::: cta
-[Join us on Discord](https://discord.gg/aDZm2eqUdX)
+[Join us on Discord](https://discord.gg/T2gnMBWMsg)
 :::
 
 ![](dragon-531.png){.dragon .dragon-tl aria-hidden="true"}
