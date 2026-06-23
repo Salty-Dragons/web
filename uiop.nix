@@ -10,6 +10,27 @@ let
       name = "filter.lua";
     };
 
+    # Reads each argv input as UTF-8, writes the sorted unique-character
+    # set to the final argv path. Compares-and-skips when content is
+    # unchanged so ninja `restat = 1` can prune downstream subset rebuilds.
+    extractCharsScript = pkgs.writeText "extract-chars.py" ''
+      import sys
+      *inputs, output = sys.argv[1:]
+      chars = set()
+      for p in inputs:
+          with open(p, encoding="utf-8") as f:
+              chars.update(f.read())
+      new = "".join(sorted(chars))
+      try:
+          with open(output, encoding="utf-8") as f:
+              old = f.read()
+      except FileNotFoundError:
+          old = None
+      if old != new:
+          with open(output, "w", encoding="utf-8") as f:
+              f.write(new)
+    '';
+
     # -- Path utilities --
     filterExtensions =
       extensions: paths:
@@ -459,6 +480,45 @@ let
       in
       "build ${outputRef}: copyfile ${sourceRef}";
 
+    # Ninja rule definitions for font subsetting. extractchars unions the
+    # codepoints of every page's rendered HTML into a single chars file;
+    # subsetfont runs hb-subset against a source TTF and emits WOFF2 directly.
+    mkNinjaSubsetRules =
+      "rule extractchars\n"
+      + "  command = ${pkgs.python3}/bin/python3 ${extractCharsScript} $in $out\n"
+      + "  description = Extracting glyph set from $in\n"
+      + "  restat = 1\n"
+      + "\n"
+      + "rule subsetfont\n"
+      + "  command = ${pkgs.harfbuzz.dev}/bin/hb-subset --text-file=$chars --layout-features='*' --output-format=woff2 $in -o $out\n"
+      + "  description = Subsetting $out\n";
+
+    # Generate the chars.txt build statement: depends on every page output.
+    mkCharsetBuild =
+      pages:
+      let
+        dollar = "$";
+        htmlRefs = lib.concatMapStringsSep " " (
+          p: "${dollar}{out}/${ninjaEscapePath p.output}"
+        ) pages;
+      in
+      "build ${dollar}{out}/chars.txt: extractchars ${htmlRefs}";
+
+    # Generate a ninja build statement that subsets one font.
+    # The source is an absolute path to a TTF; the output is a WOFF2 in $out.
+    # The chars file is an implicit dep so ninja rebuilds the font when it
+    # changes, and is also bound to the $chars rule variable.
+    fontAssetToNinjaBuild =
+      asset:
+      let
+        dollar = "$";
+        sourceRef = ninjaEscapePath (toString asset.source);
+        outputRef = "${dollar}{out}/${ninjaEscapePath asset.outputName}";
+        charsRef = "${dollar}{out}/chars.txt";
+      in
+      "build ${outputRef}: subsetfont ${sourceRef} | ${charsRef}\n"
+      + "  chars = ${charsRef}";
+
     # Generate a shell snippet that prepends ninja variable assignments and writes the result.
     # output: destination path for the assembled file, defaults to "build.ninja".
     # env: the build link farm, where `build.ninja` can be found.
@@ -491,20 +551,28 @@ let
         shell,
         pages,
         assets ? [ ],
+        fontAssets ? [ ],
       }:
       let
         envVarNames = collectEnvVarNames pages;
         pageRule = mkNinjaRule { inherit envVarNames buildScript shell; };
         pageBuilds = map pageToNinjaBuild pages;
         assetBuilds = map assetToNinjaBuild assets;
+        fontBuilds = map fontAssetToNinjaBuild fontAssets;
+        hasFonts = fontAssets != [ ];
+        subsetRules = lib.optional hasFonts mkNinjaSubsetRules;
+        charsBuild = lib.optional hasFonts (mkCharsetBuild pages);
       in
       lib.concatStringsSep "\n\n" (
         [
           pageRule
           mkNinjaCopyRule
         ]
+        ++ subsetRules
         ++ pageBuilds
         ++ assetBuilds
+        ++ charsBuild
+        ++ fontBuilds
         ++ [ "" ]
       );
   };

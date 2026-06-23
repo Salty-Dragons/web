@@ -6,8 +6,10 @@
   writeText,
   linkFarm,
   gnused,
+  harfbuzz,
   ninja,
   pandoc,
+  python3,
   runCommand,
   zsh,
 }:
@@ -55,30 +57,21 @@ let
       "et-book-bold-line-figures.ttf"
     ];
 
-  # Convert one TTF asset to a WOFF2 asset. WOFF2 ships ~45% smaller; saves
-  # ~650 KB on this site's font payload.
-  ttfToWoff2 = { source, outputName }:
-    let base = lib.removeSuffix ".ttf" outputName;
-    in {
-      source = pkgs.runCommand "${base}.woff2"
-        { nativeBuildInputs = [ pkgs.woff2 ]; } ''
-          cp ${source} ${outputName}
-          woff2_compress ${outputName}
-          mv ${base}.woff2 $out
-        '';
-      outputName = "${base}.woff2";
-    };
+  # Fonts are subsetted and converted to WOFF2 inside the ninja graph —
+  # see uiop.mkNinjaSubsetRules. We keep the source as a TTF and just
+  # rename the output to .woff2; hb-subset does the conversion.
+  fontAssets = map
+    (a: { source = a.source;
+          outputName = (lib.removeSuffix ".ttf" a.outputName) + ".woff2"; })
+    (imFellTtfs ++ etBookTtfs);
 
   pages = uiop.flattenAreas (toString ./.) siteareas;
-  assets =
-    uiop.collectAssets assetExtensions (toString ./.) ([ ./assets ] ++ siteareas)
-    ++ map ttfToWoff2 imFellTtfs
-    ++ map ttfToWoff2 etBookTtfs;
+  assets = uiop.collectAssets assetExtensions (toString ./.) ([ ./assets ] ++ siteareas);
 
   ninjaContent = uiop.mkNinjaBuildFile {
     buildScript = ./buildPage.zsh;
     shell = "${zsh}/bin/zsh";
-    inherit pages assets;
+    inherit pages assets fontAssets;
   };
 
   buildNinja = writeText "build.ninja" ninjaContent;
@@ -95,8 +88,10 @@ stdenvNoCC.mkDerivation rec {
 
   nativeBuildInputs = [
     gnused
+    harfbuzz
     ninja
     pandoc
+    python3
     zsh
   ];
 

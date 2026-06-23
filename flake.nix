@@ -23,8 +23,10 @@
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
+            harfbuzz
             ninja
             pandoc
+            python3
             zsh
           ];
           shellHook = ''
