@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=IM+Fell+DW+Pica+SC&family=IM+Fell+English:ital@0;1&display=swap");
+@import url("fonts.css");
 
 :root {
   /* Sea-chart palette */
@@ -15,9 +15,9 @@
   --HB_Color_HeaderUnderline: var(--brass);
   --HB_Color_HeaderText: var(--rust);
 
-  --font-family: 'EB Garamond', 'Iowan Old Style', 'Palatino Linotype', P052, serif;
-  --font-family-headers: 'IM Fell DW Pica SC', 'EB Garamond', serif;
-  --font-family-italic: 'IM Fell English', 'EB Garamond', serif;
+  --font-family: 'et-book', serif;
+  --font-family-headers: 'IM Fell DW Pica SC', serif;
+  --font-family-italic: 'IM Fell English', serif;
   --font-family-dropcaps: 'IM Fell English', serif;
   --font-family-ornamental: 'Zapf Dingbats', 'Wingdings', 'Symbols', 'Noto Sans Symbols', serif;
 

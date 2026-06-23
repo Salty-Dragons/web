@@ -50,11 +50,11 @@ h1 {
 }
 h2 { font-size: 2rem; }
 
-/* Subtitle in Garamond italic */
-section#main > h1 + p {
-  font-family: 'EB Garamond', serif;
+/* Subtitle in IM Fell English italic */
+section#main > h1 + div.line-block {
+  font-family: 'IM Fell English', serif;
   font-style: italic;
-  font-size: 1.5rem;
+  font-size: 2rem;
   text-align: center;
   color: var(--ink);
   margin: 0.75rem auto 0;
