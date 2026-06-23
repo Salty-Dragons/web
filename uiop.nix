@@ -442,11 +442,19 @@ let
       "rule copyfile\n" + "  command = cp $in $out\n" + "  description = Copying $out\n";
 
     # Generate a ninja build statement to copy one asset.
+    # Assets gathered from the project tree carry `srcRelPath` and are
+    # resolved through `$src` (which differs between dev shell and nix build).
+    # Assets pulled in from Nix store paths (e.g. fonts from pkgs.et-book)
+    # carry only `source` — substitute the absolute store path directly.
     assetToNinjaBuild =
       asset:
       let
         dollar = "$";
-        sourceRef = "${dollar}{src}/${ninjaEscapePath asset.srcRelPath}";
+        sourceRef =
+          if asset ? srcRelPath then
+            "${dollar}{src}/${ninjaEscapePath asset.srcRelPath}"
+          else
+            ninjaEscapePath (toString asset.source);
         outputRef = "${dollar}{out}/${ninjaEscapePath asset.outputName}";
       in
       "build ${outputRef}: copyfile ${sourceRef}";

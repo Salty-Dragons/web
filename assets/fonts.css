@@ -1,14 +1,64 @@
+/* Self-hosted web fonts. TTFs are copied into the output by the Nix build
+   (see package.nix: imFellAssets, etBookAssets). */
+
+/* --- et-book (ETBembo) ---------------------------------------------------- */
 @font-face {
-	font-family : "MrEavesRemake";
-	font-style : normal;
-	font-weight : normal;
-	src : url(font_MrEavesRemake.woff2);
+  font-family: "et-book";
+  font-style: normal;
+  font-weight: 400;
+  src: url("et-book-roman-old-style-figures.woff2") format("woff2");
+}
+@font-face {
+  font-family: "et-book";
+  font-style: italic;
+  font-weight: 400;
+  src: url("et-book-display-italic-old-style-figures.woff2") format("woff2");
+}
+@font-face {
+  font-family: "et-book";
+  font-style: normal;
+  font-weight: 600;
+  src: url("et-book-semi-bold-old-style-figures.woff2") format("woff2");
+}
+@font-face {
+  font-family: "et-book";
+  font-style: normal;
+  font-weight: 700;
+  src: url("et-book-bold-line-figures.woff2") format("woff2");
 }
 
+/* --- IM Fell DW Pica (regular + italic) ----------------------------------- */
 @font-face {
-	font-family : "SolberaImitationRemake";
-	font-style : normal;
-	font-style : italic;
-	font-weight : 100 1000;
-	src : url(font_SolberaImitationRemake.woff2);
+  font-family: "IM Fell DW Pica";
+  font-style: normal;
+  font-weight: 400;
+  src: url("IMFePIrm28P.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IM Fell DW Pica";
+  font-style: italic;
+  font-weight: 400;
+  src: url("IMFePIit28P.woff2") format("woff2");
+}
+
+/* --- IM Fell DW Pica SC (small caps) -------------------------------------- */
+@font-face {
+  font-family: "IM Fell DW Pica SC";
+  font-style: normal;
+  font-weight: 400;
+  src: url("IMFePIsc28P.woff2") format("woff2");
+}
+
+/* --- IM Fell English (regular + italic) ----------------------------------- */
+@font-face {
+  font-family: "IM Fell English";
+  font-style: normal;
+  font-weight: 400;
+  src: url("IMFeENrm28P.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IM Fell English";
+  font-style: italic;
+  font-weight: 400;
+  src: url("IMFeENit28P.woff2") format("woff2");
 }
