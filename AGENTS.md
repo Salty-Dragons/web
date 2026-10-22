@@ -62,6 +62,8 @@ Each area contains:
 
 To add a new area: create a subdirectory with a `default.nix` and add it to the `siteareas` list in `package.nix`.
 
+**`cal/`** — not a page area. `cal/calendar.ics` (if it exists and is git-tracked) is copied to `/calendar`. `cal/_headers` is copied to the site root as the Cloudflare Pages `_headers` file, which serves it as `text/calendar; charset=utf-8` so calendar apps can subscribe to it.
+
 ### Adding a new page
 
 1. Create the Markdown file in the appropriate area subdirectory.
