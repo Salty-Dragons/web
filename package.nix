@@ -67,13 +67,28 @@ let
 
   pages = uiop.flattenAreas (toString ./.) siteareas;
   # Subscribable calendar: cal/calendar.md → /calendar (iCalendar, rendered by
-  # assets/ics.lua), with Content-Type set by the Cloudflare Pages `_headers`
-  # file. Skipped until calendar.md exists.
+  # assets/ics.lua), the same as saltydragons.ics for download, and one
+  # saltydragons-<YYYYMMDD>.ics per event (listed by assets/events.lua), with
+  # Content-Type set by the Cloudflare Pages `_headers` file. Skipped until
+  # calendar.md exists.
   hasCalendar = builtins.pathExists ./cal/calendar.md;
-  calendars = lib.optional hasCalendar {
-    srcRelPath = "cal/calendar.md";
-    outputName = "calendar";
-  };
+  calendars = lib.optionals hasCalendar (
+    [
+      {
+        srcRelPath = "cal/calendar.md";
+        outputName = "calendar";
+      }
+      {
+        srcRelPath = "cal/calendar.md";
+        outputName = "saltydragons.ics";
+      }
+    ]
+    ++ map (e: {
+      srcRelPath = "cal/calendar.md";
+      outputName = e.file;
+      event = e.index;
+    }) (uiop.calendarEvents ./cal/calendar.md)
+  );
   calendarAssets = lib.optional hasCalendar {
     srcRelPath = "cal/_headers";
     outputName = "_headers";

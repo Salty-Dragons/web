@@ -1,2 +1,5 @@
 /calendar
   Content-Type: text/calendar; charset=utf-8
+
+/*.ics
+  Content-Type: text/calendar; charset=utf-8

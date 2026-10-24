@@ -1,6 +1,7 @@
 -- ics.lua - Pandoc custom writer: Markdown event list → iCalendar (RFC 5545).
 --
 -- Usage: pandoc --from=markdown --to=ics.lua cal/calendar.md -o calendar.ics
+--        pandoc … --metadata=ics-event=N   (only the N-th event; see below)
 --
 -- Input shape, one event per level-1 heading:
 --
@@ -29,9 +30,23 @@
 -- Remaining blocks → DESCRIPTION, rendered as plain text.
 -- URL         → the only https link in the description, or, if there are
 --               several distinct ones, the one wrapped in [<…>]{.url}.
+--               Site-relative links (calendar.html, /x.html) count,
+--               resolved against SITE_URL.
+--
+-- With --metadata=ics-event=N the calendar holds only the N-th event
+-- (counting level-1 headings), for a per-event download. A series keeps its
+-- replaced occurrences; a replacement occurrence stands alone under its own
+-- UID, as if it weren't one.
 
 local PRODID = '-//Salty Dragons//D&D Adventurers League//EN'
 local UID_DOMAIN = 'saltydragons.com'
+-- Base for site-relative links in descriptions, which calendar apps can't
+-- resolve on their own.
+local SITE_URL = 'https://saltydragons.com/'
+-- Display name for subscriptions (RFC 7986 NAME; X-WR-CALNAME for Google and
+-- Apple). Full calendar only: a named single-event file may be imported as a
+-- new calendar instead of into an existing one.
+local CALNAME = 'Salty Dragons'
 local TZID = 'America/Los_Angeles'
 -- Fixed so the output depends only on calendar.md and this writer.
 local DTSTAMP = '20260905T000000Z'
@@ -245,6 +260,21 @@ local function until_utc(day, hhmm)
   return ('%sT%02d%s00Z'):format(ymd(day), h, hhmm:sub(3, 4))
 end
 
+-- Resolve site-relative link targets against SITE_URL. Targets with a
+-- scheme (https:, mailto:, …) and fragment-only targets are left alone.
+local function absolute_links(blocks)
+  return blocks:walk {
+    Link = function(el)
+      local target = el.target
+      if target:match('^%a[%w+.-]*:') or target:match('^#') or target == '' then
+        return nil
+      end
+      el.target = SITE_URL .. target:gsub('^/+', '')
+      return el
+    end,
+  }
+end
+
 -- Calendar descriptions are plain text, so keep link targets visible.
 local function expose_links(blocks)
   return blocks:walk {
@@ -385,7 +415,7 @@ local function parse_event(ev)
   local day = parse_date(heading, date)
   local fields = parse_fields(heading, ev.body[1])
   local start, finish = parse_time(heading, fields.time)
-  local body = pandoc.Blocks { table.unpack(ev.body, 2) }
+  local body = absolute_links(pandoc.Blocks { table.unpack(ev.body, 2) })
   return {
     heading = heading,
     day = day,
@@ -427,21 +457,25 @@ end
 
 -- Keyed on date and start time so retitling an event (e.g. "TBD" → the real
 -- adventure) updates it in subscribers' calendars instead of replacing it.
--- Replacement occurrences share their series' UID, as RFC 5545 requires.
+-- Replacement occurrences share their series' UID, as RFC 5545 requires, and
+-- keep their own as own_uid for single-event output. They are numbered last,
+-- so they never shift the UIDs of the events listed beside them.
 local function assign_uids(events)
   local seen = {}
+  local function next_uid(e)
+    local uid = ('%sT%s'):format(ymd(e.day), e.start)
+    seen[uid] = (seen[uid] or 0) + 1
+    return seen[uid] > 1 and ('%s-%d'):format(uid, seen[uid]) or uid
+  end
   for _, e in ipairs(events) do
     if not e.override_of then
-      local uid = ('%sT%s'):format(ymd(e.day), e.start)
-      seen[uid] = (seen[uid] or 0) + 1
-      if seen[uid] > 1 then
-        uid = ('%s-%d'):format(uid, seen[uid])
-      end
-      e.uid = uid
+      e.uid = next_uid(e)
+      e.own_uid = e.uid
     end
   end
   for _, e in ipairs(events) do
     if e.override_of then
+      e.own_uid = next_uid(e)
       e.uid = e.override_of.uid
     end
   end
@@ -449,6 +483,41 @@ end
 
 local function local_time(day, hhmm)
   return ('TZID=%s:%sT%s00'):format(TZID, ymd(day), hhmm)
+end
+
+local function vevent(lines, e, uid, replaces)
+  local end_day = e.finish <= e.start and e.day + 1 or e.day
+  lines[#lines + 1] = 'BEGIN:VEVENT'
+  lines[#lines + 1] = ('UID:%s@%s'):format(uid, UID_DOMAIN)
+  lines[#lines + 1] = 'DTSTAMP:' .. DTSTAMP
+  if replaces then
+    lines[#lines + 1] = 'RECURRENCE-ID;' .. local_time(e.day, e.override_of.start)
+  end
+  lines[#lines + 1] = 'DTSTART;' .. local_time(e.day, e.start)
+  lines[#lines + 1] = 'DTEND;' .. local_time(end_day, e.finish)
+  if e.rule then
+    local rrule = 'RRULE:FREQ=' .. FREQ[e.rule.unit]
+    if e.rule.interval > 1 then
+      rrule = rrule .. ';INTERVAL=' .. e.rule.interval
+    end
+    if e.rule.until_day then
+      rrule = rrule .. ';UNTIL=' .. until_utc(e.rule.until_day, e.start)
+    elseif e.rule.count then
+      rrule = rrule .. ';COUNT=' .. e.rule.count
+    end
+    lines[#lines + 1] = rrule
+  end
+  lines[#lines + 1] = 'SUMMARY:' .. escape_text(e.summary)
+  if e.location then
+    lines[#lines + 1] = 'LOCATION:' .. escape_text(e.location)
+  end
+  if e.url then
+    lines[#lines + 1] = 'URL:' .. e.url
+  end
+  if e.description ~= '' then
+    lines[#lines + 1] = 'DESCRIPTION:' .. escape_text(e.description)
+  end
+  lines[#lines + 1] = 'END:VEVENT'
 end
 
 function Writer(doc, opts)
@@ -459,6 +528,12 @@ function Writer(doc, opts)
   link_overrides(events)
   assign_uids(events)
 
+  local selected = doc.meta['ics-event'] and stringify(doc.meta['ics-event'])
+  local selected_event = selected and events[tonumber(selected)]
+  if selected and not selected_event then
+    error(('calendar: ics-event=%s: no such event'):format(selected), 0)
+  end
+
   local lines = {
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -466,43 +541,25 @@ function Writer(doc, opts)
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
   }
+  if not selected_event then
+    lines[#lines + 1] = 'NAME:' .. escape_text(CALNAME)
+    lines[#lines + 1] = 'X-WR-CALNAME:' .. escape_text(CALNAME)
+  end
   for _, l in ipairs(VTIMEZONE) do
     lines[#lines + 1] = l
   end
 
-  for _, e in ipairs(events) do
-    local end_day = e.finish <= e.start and e.day + 1 or e.day
-    lines[#lines + 1] = 'BEGIN:VEVENT'
-    lines[#lines + 1] = ('UID:%s@%s'):format(e.uid, UID_DOMAIN)
-    lines[#lines + 1] = 'DTSTAMP:' .. DTSTAMP
-    if e.override_of then
-      lines[#lines + 1] = 'RECURRENCE-ID;' .. local_time(e.day, e.override_of.start)
-    end
-    lines[#lines + 1] = 'DTSTART;' .. local_time(e.day, e.start)
-    lines[#lines + 1] = 'DTEND;' .. local_time(end_day, e.finish)
-    if e.rule then
-      local rrule = 'RRULE:FREQ=' .. FREQ[e.rule.unit]
-      if e.rule.interval > 1 then
-        rrule = rrule .. ';INTERVAL=' .. e.rule.interval
+  if selected_event then
+    vevent(lines, selected_event, selected_event.own_uid, false)
+    for _, e in ipairs(events) do
+      if e.override_of == selected_event then
+        vevent(lines, e, e.uid, true)
       end
-      if e.rule.until_day then
-        rrule = rrule .. ';UNTIL=' .. until_utc(e.rule.until_day, e.start)
-      elseif e.rule.count then
-        rrule = rrule .. ';COUNT=' .. e.rule.count
-      end
-      lines[#lines + 1] = rrule
     end
-    lines[#lines + 1] = 'SUMMARY:' .. escape_text(e.summary)
-    if e.location then
-      lines[#lines + 1] = 'LOCATION:' .. escape_text(e.location)
+  else
+    for _, e in ipairs(events) do
+      vevent(lines, e, e.uid, e.override_of ~= nil)
     end
-    if e.url then
-      lines[#lines + 1] = 'URL:' .. e.url
-    end
-    if e.description ~= '' then
-      lines[#lines + 1] = 'DESCRIPTION:' .. escape_text(e.description)
-    end
-    lines[#lines + 1] = 'END:VEVENT'
   end
 
   lines[#lines + 1] = 'END:VCALENDAR'

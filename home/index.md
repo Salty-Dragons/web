@@ -30,7 +30,7 @@ between sessions,
 and travels with you
 to any other AL table.
 
-We play every 1--3 weeks
+We play biweekly
 at [Bacchus and Venus](https://www.bacchusandvenus.com).
 At our table,
 scheduling lives on Discord —
@@ -39,6 +39,7 @@ resources for getting started.
 
 ::: cta
 [Join us on Discord](https://discord.gg/T2gnMBWMsg)
+[Game Calendar](calendar.html)
 :::
 
 ![](dragon-531.png){.dragon .dragon-tl aria-hidden="true"}

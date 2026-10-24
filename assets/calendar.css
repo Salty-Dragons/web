@@ -1,0 +1,32 @@
+@import url("index.css");
+
+div.subscribe {
+  text-align: center;
+  margin: 1rem 0 0;
+}
+div.subscribe > p { margin: 0; }
+/* Each half stays whole, so the line breaks only before "or". */
+div.subscribe > p > span { display: inline-block; }
+
+section.level2 {
+  margin: 2.5rem 0 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--brass);
+}
+section.level2 > h2 { margin-bottom: 0.25rem; }
+
+div.when {
+  font-family: var(--font-family-italic);
+  font-style: italic;
+  color: var(--verdigris);
+  margin: 0 0 1rem;
+}
+
+section.level2 > p { margin: 0 0 1.1rem; }
+
+@media (max-width: 640px) {
+  section.level2 > h2 { font-size: 1.4rem; }
+}
+
+h2.event > span.kicker,
+h2.event > span.title { display: block; }

@@ -16,6 +16,31 @@ let
       name = "ics.lua";
     };
 
+    # Pandoc custom writer listing the events of a Markdown event list as JSON
+    # ([{ index, file }]) for Nix to declare one single-event build each.
+    eventsWriter = builtins.path {
+      path = ./assets/events.lua;
+      name = "events.lua";
+    };
+
+    # The events of a Markdown event list, read at evaluation time
+    # (import from derivation) via eventsWriter.
+    calendarEvents =
+      source:
+      builtins.fromJSON (
+        builtins.readFile (
+          pkgs.runCommand "calendar-events.json" { nativeBuildInputs = [ pkgs.pandoc ]; } ''
+            pandoc --from=markdown --to=${eventsWriter} --output=$out ${source}
+          ''
+        )
+      );
+
+    # Pandoc Lua filter that renders cal/calendar.md as the calendar.html page.
+    calendarHtmlFilter = builtins.path {
+      path = ./assets/calendar.lua;
+      name = "calendar.lua";
+    };
+
     # Reads each argv input as UTF-8, writes the sorted unique-character
     # set to the final argv path. Compares-and-skips when content is
     # unchanged so ninja `restat = 1` can prune downstream subset rebuilds.
@@ -150,7 +175,7 @@ let
         homelink = withPrefix.homelink or computedHomelink;
         include = mkNavInclude { inherit uplink homelink; };
         header = mkHeaderInclude { };
-        filter = pandocFilter;
+        filter = page.filter or pandocFilter;
       in
       withPrefix
       // {
@@ -487,18 +512,22 @@ let
       "build ${outputRef}: copyfile ${sourceRef}";
 
     # Ninja rule rendering a Markdown event list to iCalendar via icsWriter.
+    # $flags selects a single event (--metadata=ics-event=N).
     mkNinjaCalendarRule =
       "rule buildcal\n"
-      + "  command = ${pkgs.pandoc}/bin/pandoc --from=markdown --to=${icsWriter} --output=$out $in\n"
+      + "  command = ${pkgs.pandoc}/bin/pandoc --from=markdown --to=${icsWriter} $flags --output=$out $in\n"
       + "  description = Building calendar $out\n";
 
-    # Generate a ninja build statement for one calendar ({ srcRelPath, outputName }).
+    # Generate a ninja build statement for one calendar
+    # ({ srcRelPath, outputName, event ? null }); event is the index of the
+    # only event to include.
     calendarToNinjaBuild =
       cal:
       let
         dollar = "$";
       in
-      "build ${dollar}{out}/${ninjaEscapePath cal.outputName}: buildcal ${dollar}{src}/${ninjaEscapePath cal.srcRelPath}";
+      "build ${dollar}{out}/${ninjaEscapePath cal.outputName}: buildcal ${dollar}{src}/${ninjaEscapePath cal.srcRelPath}"
+      + lib.optionalString (cal.event or null != null) "\n  flags = --metadata=ics-event=${toString cal.event}";
 
     # Ninja rule definitions for font subsetting. extractchars unions the
     # codepoints of every page's rendered HTML into a single chars file;

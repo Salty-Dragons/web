@@ -46,9 +46,11 @@ Project naming defaults to `saltydragons` in `Makefile` (`CLOUDFLARE_PAGES_PROJE
 2. **`uiop.nix`** — pure Nix utility library. Handles path utilities, Ninja rule generation, title extraction from Markdown (YAML front-matter and ATX headings), page slug derivation, and nav link computation.
 3. **`build.ninja`** — generated output; defines one `pandoc` rule per page and `copyfile` rules for assets. Do not edit by hand.
 4. **`buildPage.zsh`** — invoked per page by Ninja. Receives `title`, `css`, `filter`, `include` (nav HTML), `name`, `prefix` as env vars and runs `pandoc --lua-filter --section-divs --standalone`.
-5. **`assets/filter.lua`** — Pandoc Lua filter scaffold (currently a no-op). Add filter functions here to transform AST nodes.
-6. **`assets/ics.lua`** — Pandoc custom writer that renders `cal/calendar.md` as iCalendar. Ninja runs it directly (`pandoc --to=ics.lua`), not through `buildPage.zsh`.
-7. **`flake.nix`** — exposes `packages.default` (the site) and the dev shell.
+5. **`assets/filter.lua`** — Pandoc Lua filter scaffold (currently a no-op) applied to every page unless the page sets its own `filter` in `default.nix`. Add filter functions here to transform AST nodes.
+6. **`assets/ics.lua`** — Pandoc custom writer that renders `cal/calendar.md` as iCalendar. Ninja runs it directly (`pandoc --to=ics.lua`), not through `buildPage.zsh`. With `--metadata=ics-event=N` it renders only the N-th event (a series keeps its replaced occurrences; a replacement occurrence stands alone under its own `UID`).
+7. **`assets/events.lua`** — Pandoc custom writer that lists the events of `cal/calendar.md` as JSON (`[{ index, file }]`). `uiop.calendarEvents` runs it at evaluation time (import from derivation) so `package.nix` can declare one `saltydragons-<YYYYMMDD>.ics` build per event.
+8. **`assets/calendar.lua`** — Pandoc Lua filter (`uiop.calendarHtmlFilter`) that renders `cal/calendar.md` as the `calendar.html` page, with an "Add all events to my calendar" link to `saltydragons.ics`, Apple (`webcal://`) and Google subscribe links, and an "Add this session to my calendar" link to each event's `saltydragons-<YYYYMMDD>.ics` (the second event on a date is `saltydragons-<YYYYMMDD>-2.ics`, etc.; it must name files as `events.lua` does). It shows unparseable values as written; validation lives in `ics.lua`, which fails the same build.
+9. **`flake.nix`** — exposes `packages.default` (the site) and the dev shell.
 
 ### Content areas
 
@@ -63,11 +65,13 @@ Each area contains:
 
 To add a new area: create a subdirectory with a `default.nix` and add it to the `siteareas` list in `package.nix`.
 
-**`cal/`** — not a page area. `cal/calendar.md` (if it exists and is git-tracked) is rendered by `assets/ics.lua` to `/calendar`. `cal/_headers` is copied to the site root as the Cloudflare Pages `_headers` file, which serves it as `text/calendar; charset=utf-8` so calendar apps can subscribe to it.
+**`cal/`** — not a page area. `cal/calendar.md` (if it exists and is git-tracked) is rendered by `assets/ics.lua` to `/calendar` (subscriptions), `/saltydragons.ics` (same content, for download) and one `/saltydragons-<YYYYMMDD>.ics` per event, and, as a `home/default.nix` page using `assets/calendar.lua` and `calendar.css`, to `calendar.html`. `cal/_headers` is copied to the site root as the Cloudflare Pages `_headers` file, which serves all of these as `text/calendar; charset=utf-8` so calendar apps can subscribe to or import them.
 
-Calendar format: one event per level-1 heading `# YYYY-MM-DD: Title` (→ date, `SUMMARY`), followed immediately by a line block whose lines are `[HHMM-HHMM]{.time}` (required; Pacific time, an end at or before the start rolls to the next day) and optionally `[…]{.location}`. A paragraph holding only `[Prefix]{.prefix}` sets a `SUMMARY` prefix (`Prefix: Title`) for all following events; `[]{.prefix}` clears it. Everything after the line block becomes the plain-text `DESCRIPTION`. `URL` is the only distinct https link in the description; with several, exactly one must be wrapped as `[<https://…>]{.url}`. `UID` is derived from date + start time, so retitling an event updates it in subscribers' calendars. `DTSTAMP` is fixed. Malformed events fail the build.
+Calendar format: one event per level-1 heading `# YYYY-MM-DD: Title` (→ date, `SUMMARY`), followed immediately by a line block whose lines are `[HHMM-HHMM]{.time}` (required; Pacific time, an end at or before the start rolls to the next day) and optionally `[…]{.location}`. An optional module code goes in backticks at the start of the title (``# 2026-10-26: `DDEX1-07` Drums in the Marsh``); `calendar.html` shows it beside the date above the title, and `SUMMARY` keeps it as plain text. A paragraph holding only `[Prefix]{.prefix}` sets a `SUMMARY` prefix (`Prefix: Title`) for all following events; `[]{.prefix}` clears it. Everything after the line block becomes the plain-text `DESCRIPTION`. Site-relative links in it (`calendar.html`) are resolved against `https://saltydragons.com/` (`SITE_URL` in `ics.lua`). `URL` is the only distinct https link in the description; with several, exactly one must be wrapped as `[<https://…>]{.url}`. `UID` is derived from date + start time, so retitling an event updates it in subscribers' calendars. `DTSTAMP` is fixed. Malformed events fail the build.
 
 Recurring events: heading attributes `{every="2 weeks"}` (N `day`/`week`/`month`/`year`, singular or plural; N defaults to 1), optionally with `until="YYYY-MM-DD"` (inclusive) or `count="N"` (not both), emit an `RRULE`. A non-recurring event dated on an occurrence of a series replaces that occurrence (same `UID` + `RECURRENCE-ID`) rather than appearing beside it; two events replacing the same occurrence is an error.
+
+Calendar name: `/calendar` and `saltydragons.ics` carry `NAME` and `X-WR-CALNAME` (`CALNAME` in `ics.lua`, "Salty Dragons"), which calendar apps show for the subscription. Per-event files omit them so imports land in an existing calendar.
 
 ### Adding a new page
 
@@ -77,4 +81,4 @@ Recurring events: heading attributes `{every="2 weeks"}` (N `day`/`week`/`month`
 
 ### Styling
 
-Global CSS lives in `assets/` (`reset.css`, `variables.css`, `nav.css`, `fonts.css`, `figures.css`, `main.css`, `global.css`, `dropcap.css`, `timeline.css`, `index.css`). Per-area CSS is referenced in each area's `default.nix`. Font files (`.woff2`) are copied verbatim to output.
+Global CSS lives in `assets/` (`reset.css`, `variables.css`, `nav.css`, `fonts.css`, `figures.css`, `main.css`, `global.css`, `dropcap.css`, `timeline.css`, `index.css`, `calendar.css`). Per-area CSS is referenced in each area's `default.nix`. Font files (`.woff2`) are copied verbatim to output.

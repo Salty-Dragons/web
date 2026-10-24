@@ -93,6 +93,10 @@ a:focus {
 }
 
 div.cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
   text-align: center;
   margin: 2.5rem 0 0.5rem;
 }
