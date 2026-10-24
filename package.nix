@@ -66,25 +66,25 @@ let
     (imFellTtfs ++ etBookTtfs);
 
   pages = uiop.flattenAreas (toString ./.) siteareas;
-  # Subscribable calendar: cal/calendar.ics → /calendar, with Content-Type set
-  # by the Cloudflare Pages `_headers` file. Skipped until calendar.ics exists.
-  calendarAssets = lib.optionals (builtins.pathExists ./cal/calendar.ics) [
-    {
-      srcRelPath = "cal/calendar.ics";
-      outputName = "calendar";
-    }
-    {
-      srcRelPath = "cal/_headers";
-      outputName = "_headers";
-    }
-  ];
+  # Subscribable calendar: cal/calendar.md → /calendar (iCalendar, rendered by
+  # assets/ics.lua), with Content-Type set by the Cloudflare Pages `_headers`
+  # file. Skipped until calendar.md exists.
+  hasCalendar = builtins.pathExists ./cal/calendar.md;
+  calendars = lib.optional hasCalendar {
+    srcRelPath = "cal/calendar.md";
+    outputName = "calendar";
+  };
+  calendarAssets = lib.optional hasCalendar {
+    srcRelPath = "cal/_headers";
+    outputName = "_headers";
+  };
   assets =
     uiop.collectAssets assetExtensions (toString ./.) ([ ./assets ] ++ siteareas) ++ calendarAssets;
 
   ninjaContent = uiop.mkNinjaBuildFile {
     buildScript = ./buildPage.zsh;
     shell = "${zsh}/bin/zsh";
-    inherit pages assets fontAssets;
+    inherit pages assets fontAssets calendars;
   };
 
   buildNinja = writeText "build.ninja" ninjaContent;

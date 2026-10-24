@@ -10,6 +10,12 @@ let
       name = "filter.lua";
     };
 
+    # Pandoc custom writer that renders the Markdown event list as iCalendar.
+    icsWriter = builtins.path {
+      path = ./assets/ics.lua;
+      name = "ics.lua";
+    };
+
     # Reads each argv input as UTF-8, writes the sorted unique-character
     # set to the final argv path. Compares-and-skips when content is
     # unchanged so ninja `restat = 1` can prune downstream subset rebuilds.
@@ -480,6 +486,20 @@ let
       in
       "build ${outputRef}: copyfile ${sourceRef}";
 
+    # Ninja rule rendering a Markdown event list to iCalendar via icsWriter.
+    mkNinjaCalendarRule =
+      "rule buildcal\n"
+      + "  command = ${pkgs.pandoc}/bin/pandoc --from=markdown --to=${icsWriter} --output=$out $in\n"
+      + "  description = Building calendar $out\n";
+
+    # Generate a ninja build statement for one calendar ({ srcRelPath, outputName }).
+    calendarToNinjaBuild =
+      cal:
+      let
+        dollar = "$";
+      in
+      "build ${dollar}{out}/${ninjaEscapePath cal.outputName}: buildcal ${dollar}{src}/${ninjaEscapePath cal.srcRelPath}";
+
     # Ninja rule definitions for font subsetting. extractchars unions the
     # codepoints of every page's rendered HTML into a single chars file;
     # subsetfont runs hb-subset against a source TTF and emits WOFF2 directly.
@@ -552,6 +572,7 @@ let
         pages,
         assets ? [ ],
         fontAssets ? [ ],
+        calendars ? [ ],
       }:
       let
         envVarNames = collectEnvVarNames pages;
@@ -559,6 +580,8 @@ let
         pageBuilds = map pageToNinjaBuild pages;
         assetBuilds = map assetToNinjaBuild assets;
         fontBuilds = map fontAssetToNinjaBuild fontAssets;
+        calendarRules = lib.optional (calendars != [ ]) mkNinjaCalendarRule;
+        calendarBuilds = map calendarToNinjaBuild calendars;
         hasFonts = fontAssets != [ ];
         subsetRules = lib.optional hasFonts mkNinjaSubsetRules;
         charsBuild = lib.optional hasFonts (mkCharsetBuild pages);
@@ -569,8 +592,10 @@ let
           mkNinjaCopyRule
         ]
         ++ subsetRules
+        ++ calendarRules
         ++ pageBuilds
         ++ assetBuilds
+        ++ calendarBuilds
         ++ charsBuild
         ++ fontBuilds
         ++ [ "" ]

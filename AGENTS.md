@@ -47,7 +47,8 @@ Project naming defaults to `saltydragons` in `Makefile` (`CLOUDFLARE_PAGES_PROJE
 3. **`build.ninja`** — generated output; defines one `pandoc` rule per page and `copyfile` rules for assets. Do not edit by hand.
 4. **`buildPage.zsh`** — invoked per page by Ninja. Receives `title`, `css`, `filter`, `include` (nav HTML), `name`, `prefix` as env vars and runs `pandoc --lua-filter --section-divs --standalone`.
 5. **`assets/filter.lua`** — Pandoc Lua filter scaffold (currently a no-op). Add filter functions here to transform AST nodes.
-6. **`flake.nix`** — exposes `packages.default` (the site) and the dev shell.
+6. **`assets/ics.lua`** — Pandoc custom writer that renders `cal/calendar.md` as iCalendar. Ninja runs it directly (`pandoc --to=ics.lua`), not through `buildPage.zsh`.
+7. **`flake.nix`** — exposes `packages.default` (the site) and the dev shell.
 
 ### Content areas
 
@@ -62,7 +63,11 @@ Each area contains:
 
 To add a new area: create a subdirectory with a `default.nix` and add it to the `siteareas` list in `package.nix`.
 
-**`cal/`** — not a page area. `cal/calendar.ics` (if it exists and is git-tracked) is copied to `/calendar`. `cal/_headers` is copied to the site root as the Cloudflare Pages `_headers` file, which serves it as `text/calendar; charset=utf-8` so calendar apps can subscribe to it.
+**`cal/`** — not a page area. `cal/calendar.md` (if it exists and is git-tracked) is rendered by `assets/ics.lua` to `/calendar`. `cal/_headers` is copied to the site root as the Cloudflare Pages `_headers` file, which serves it as `text/calendar; charset=utf-8` so calendar apps can subscribe to it.
+
+Calendar format: one event per level-1 heading `# YYYY-MM-DD: Title` (→ date, `SUMMARY`), followed immediately by a line block whose lines are `[HHMM-HHMM]{.time}` (required; Pacific time, an end at or before the start rolls to the next day) and optionally `[…]{.location}`. A paragraph holding only `[Prefix]{.prefix}` sets a `SUMMARY` prefix (`Prefix: Title`) for all following events; `[]{.prefix}` clears it. Everything after the line block becomes the plain-text `DESCRIPTION`. `URL` is the only distinct https link in the description; with several, exactly one must be wrapped as `[<https://…>]{.url}`. `UID` is derived from date + start time, so retitling an event updates it in subscribers' calendars. `DTSTAMP` is fixed. Malformed events fail the build.
+
+Recurring events: heading attributes `{every="2 weeks"}` (N `day`/`week`/`month`/`year`, singular or plural; N defaults to 1), optionally with `until="YYYY-MM-DD"` (inclusive) or `count="N"` (not both), emit an `RRULE`. A non-recurring event dated on an occurrence of a series replaces that occurrence (same `UID` + `RECURRENCE-ID`) rather than appearing beside it; two events replacing the same occurrence is an error.
 
 ### Adding a new page
 
